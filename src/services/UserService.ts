@@ -32,7 +32,7 @@ export class UserService {
     this.logger.info("User created", { userId: user.id });
 
     if (FEATURE_FLAGS.enableWelcomeEmail) {
-      await this.notificationService.send("welcome", user.email, { name: user.name });
+      await this.notificationService.send("user.welcome", user.email, { name: user.name });
     }
 
     return user;

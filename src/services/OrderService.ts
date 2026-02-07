@@ -76,7 +76,7 @@ export class OrderService {
     this.orders.set(order.id, order);
 
     if (order.status === OrderStatus.PAID) {
-      await this.deps.notificationService.send("orderConfirmation", user.email, {
+      await this.deps.notificationService.send("order.confirmed", user.email, {
         orderId: order.id,
         total: formatMoney(order.totals.total)
       });
@@ -107,7 +107,7 @@ export class OrderService {
 
     if (status === PaymentStatus.CAPTURED) {
       const user = await this.deps.userService.getUserById(order.userId);
-      await this.deps.notificationService.send("orderConfirmation", user.email, {
+      await this.deps.notificationService.send("order.confirmed", user.email, {
         orderId: order.id,
         total: formatMoney(order.totals.total)
       });
@@ -115,7 +115,7 @@ export class OrderService {
 
     if (status === PaymentStatus.FAILED) {
       const user = await this.deps.userService.getUserById(order.userId);
-      await this.deps.notificationService.send("paymentFailed", user.email, {
+      await this.deps.notificationService.send("payment.failed", user.email, {
         orderId: order.id,
         reason: order.payment?.failureReason ?? "Provider failure"
       });

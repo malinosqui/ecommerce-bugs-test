@@ -1,5 +1,6 @@
 import { FEATURE_FLAGS } from "../config/featureFlags";
-import { TEMPLATES, TemplateId } from "../config/templates";
+import { NOTIFICATION_EVENTS, NotificationEvent } from "../config/notificationEvents";
+import { TEMPLATES } from "../config/templates";
 import { AppError, ID, ISODateString, generateId, nowIso } from "../models/common";
 import { createLogger } from "../utils/logger";
 
@@ -13,7 +14,7 @@ export type NotificationStatus = "SENT" | "SKIPPED";
 
 export interface NotificationReceipt {
   id: ID;
-  templateId: TemplateId;
+  templateId: string;
   channel: NotificationChannel;
   recipient: string;
   status: NotificationStatus;
@@ -24,26 +25,27 @@ export class NotificationService {
   private logger = createLogger("NotificationService");
 
   async send(
-    templateId: TemplateId,
+    eventName: string,
     recipient: string,
     data: Record<string, string | number>,
     channel: NotificationChannel = NotificationChannel.EMAIL
   ): Promise<NotificationReceipt> {
-    const template = TEMPLATES[templateId];
+    const templateId = NOTIFICATION_EVENTS[eventName as NotificationEvent];
+    const template = templateId ? TEMPLATES[templateId] : undefined;
     if (!template) {
       throw new AppError({
-        code: "TEMPLATE_NOT_FOUND",
-        message: `Template ${templateId} not found`,
-        status: 500
+        code: "UNKNOWN_NOTIFICATION_EVENT",
+        message: `Notification event ${eventName} not supported`,
+        status: 500,
+        details: { eventName }
       });
     }
 
     const shouldSkip =
-      !FEATURE_FLAGS.enablePaymentNotifications &&
-      (templateId === "paymentFailed" || templateId === "paymentCaptured");
+      !FEATURE_FLAGS.enablePaymentNotifications && eventName.startsWith("payment.");
 
     if (shouldSkip) {
-      this.logger.info("Notification skipped by feature flag", { templateId, recipient });
+      this.logger.info("Notification skipped by feature flag", { eventName, recipient });
       return {
         id: generateId("notif"),
         templateId,
@@ -55,7 +57,7 @@ export class NotificationService {
     }
 
     const message = this.render(template, data);
-    this.logger.info("Notification dispatched", { templateId, recipient, channel, message });
+    this.logger.info("Notification dispatched", { eventName, recipient, channel, message });
 
     return {
       id: generateId("notif"),
